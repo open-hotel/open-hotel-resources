@@ -1,0 +1,11 @@
+{
+  "name": "open-hotel-resources",
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": "https://github.com/open-hotel/open-hotel-resources.git",
+  "author": "Salomão Neto <salomaosnff@yahoo.com>",
+  "license": "MIT",
+  "dependencies": {
+    "ignore": "^5.1.4"
+  }
+}
