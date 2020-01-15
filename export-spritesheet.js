@@ -15,7 +15,7 @@ const folders = fs
     }
 
     return items;
-  }, []).map(exportOffsets);
+  }, []).map(exportLib).map(exportOffsets);
 
 function exportLib(name, i, items) {
   console.clear()
@@ -53,10 +53,14 @@ function exportOffsets (name, i, items) {
   const sheet = JSON.parse(sheetData)
   const offsets = JSON.parse(offsetData)
 
+  sheet.meta.offset = sheet.meta.offset || {}
+
   for (const [frameName, value] of Object.entries(offsets)) {
     const textureName = `${name}_${frameName}.png`
-    sheet.frames[textureName] = sheet.frames[textureName] || {}
-    sheet.frames[textureName].pivot = value
+    sheet.meta.offset[textureName] = {
+      x: Number(value.x),
+      y: Number(value.y),
+    }
   }
 
   fs.writeFileSync(sheetFile, JSON.stringify(sheet))

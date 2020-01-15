@@ -6,6 +6,10 @@
   "author": "Salomão Neto <salomaosnff@yahoo.com>",
   "license": "MIT",
   "dependencies": {
-    "ignore": "^5.1.4"
+    "ignore": "^5.1.4",
+    "jpexs-flash-decompiler": "https://github.com/salomaosnff/jpexs-flash-decompiler.git",
+    "rimraf": "^3.0.0",
+    "rxjs": "^6.5.3",
+    "xml2js": "^0.4.23"
   }
 }
