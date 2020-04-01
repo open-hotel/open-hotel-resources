@@ -34,22 +34,29 @@ async function FigureDataXMLToJSON() {
   });
 
   const figuredataJSON = {
-    palette: figuredata.colors.reduce((acc, { palette }) => (
-      {
+    palette: figuredata.colors.reduce(
+      (acc, { palette }) => ({
         ...acc,
-        ...palette.reduce((acc, palette) => ({
-          ...acc,
-          [palette.$.id]: palette.color.reduce((acc, color) => ({
+        ...palette.reduce(
+          (acc, palette) => ({
             ...acc,
-            [color.$.id]:{
-              ...color.$,
-              color: color._,
-              id: undefined
-            }
-          }), {})
-        }), {})
-      }
-    ), {}),
+            [palette.$.id]: palette.color.reduce(
+              (acc, color) => ({
+                ...acc,
+                [color.$.id]: {
+                  ...color.$,
+                  color: color._,
+                  id: undefined
+                }
+              }),
+              {}
+            )
+          }),
+          {}
+        )
+      }),
+      {}
+    ),
     settype: figuredata.sets[0].settype.reduce((acc, type) => {
       acc[type.$.type] = {
         ...type.$,
@@ -58,11 +65,13 @@ async function FigureDataXMLToJSON() {
           acc[set.$.id] = {
             ...set.$,
             id: undefined,
-            parts: set.part.map((part) => part.$),
-            hiddenlayers: set.hiddenlayers && set.hiddenlayers[0].layer.map((part) => part.$.parttype),
+            parts: set.part.map(part => part.$),
+            hiddenlayers:
+              set.hiddenlayers &&
+              set.hiddenlayers[0].layer.map(part => part.$.parttype)
           };
           return acc;
-        }, {}),
+        }, {})
       };
       return acc;
     }, {})
@@ -109,18 +118,21 @@ async function FigureMapXMLToJSON() {
 async function downloadClothes() {
   const figuredata = await FigureDataXMLToJSON();
   const figuremap = await FigureMapXMLToJSON();
+  const extractedLibs = readdirSync(join(config.out));
 
   const {
     "flash.dynamic.avatar.download.url": baseURL,
     "flash.dynamic.avatar.download.name.template": urlTemplate
   } = config.gamedata.external_variables;
 
-  const files = figuremap.libs.reduce((acc, lib) => {
-    const filename = parseTemplate(urlTemplate, { libname: lib.id });
-    const outFilename = `swf/clothes/${filename}`;
-    acc[outFilename] = `${config.protocol}:${baseURL}${filename}`;
-    return acc;
-  }, {});
+  const files = figuremap.libs
+    // .filter(lib => !extractedLibs.includes(lib.id))
+    .reduce((acc, lib) => {
+      const filename = parseTemplate(urlTemplate, { libname: lib.id });
+      const outFilename = `swf/${filename}`;
+      acc[outFilename] = `${config.protocol}:${baseURL}${filename}`;
+      return acc;
+    }, {});
 
   await download(files, async (filename, url, loaded, total) => {
     const lib = basename(filename).replace(/\.swf$/, "");
@@ -131,14 +143,15 @@ async function downloadClothes() {
 
 function extract(file, lib) {
   return new Promise(async (resolve, reject) => {
-    const output = join(config.out, ".jpexs_output", lib);
-    const dirname = join(config.out, "clothes", lib);
+    const output = join(config.out, lib);
+    const dirname = join(config.out, lib);
 
     if (existsSync(dirname)) {
       await rimraf(file);
+      await processLib(output, lib);
       return resolve();
     }
-  
+
     JPEXS.export(
       {
         file,
@@ -156,7 +169,7 @@ function extract(file, lib) {
 }
 
 async function processLib(output_dir, lib) {
-  const dirname = join(config.out, "clothes", lib);
+  const dirname = join(config.out, lib);
   const images_dir = join(output_dir, "images");
   const binary_dir = join(output_dir, "binaryData");
 
@@ -171,39 +184,29 @@ async function processLib(output_dir, lib) {
         .shift()
     )
   );
-  const libJSON = await XML.parseStringPromise(libXML);
+  const { manifest } = await XML.parseStringPromise(libXML);
 
-  const offsets = libJSON.manifest.library[0].assets.reduce(
-    (acc, { asset }) => {
-      return {
-        ...acc,
-        ...asset.reduce((acc, asset) => {
-          const param = asset.param || [];
-          const offsetParam = param.find(({ $ }) => $.name === "offset");
-          
-          if (!offsetParam) return acc;
-          
-          const [x, y] = offsetParam.$.value.split(",").map(parseFloat);
-          acc[asset.$.name] = {
-            x,
-            y
-          };
-          return acc;
-        }, {})
-      };
-    },
-    {}
-  );
+  const offsets = manifest.library[0].assets.reduce((acc, { asset }) => {
+    return {
+      ...acc,
+      ...asset.reduce((acc, asset) => {
+        const param = asset.param || [];
+        const offsetParam = param.find(({ $ }) => $.key === "offset");
 
-  writeFile(join("clothes", lib, "offsets.json"), JSON.stringify(offsets));
+        if (!offsetParam) return acc;
+
+        acc[asset.$.name] = offsetParam.$.value.split(",").map(parseFloat);
+        return acc;
+      }, {})
+    };
+  }, {});
+
+  writeFile(join(lib, "offsets.json"), JSON.stringify(offsets));
 
   for (const image of images) {
-    const filename = join(dirname, image.replace(/^\d+_/, ""));
-    mkdirSync(dirname, { recursive: true });
-    renameSync(join(images_dir, image), filename);
+    const filename = image.replace(/^\d+_/, "");
+    renameSync(join(images_dir, image), join(images_dir, filename));
   }
-
-  rimraf(output_dir);
 }
 
 module.exports = downloadClothes;

@@ -9,4 +9,4 @@ const { extractSWF, ITEM } = require("./lib/swf-extractor");
 //   complete: () => console.log('Done!')
 // });
 
-extractSWF("swf/clothes/hh_human_body.swf", [ITEM.BINARY, ITEM.IMAGE]).subscribe(console.log);
+extractSWF("swf/hh_human_body.swf", [ITEM.BINARY, ITEM.IMAGE]).subscribe(console.log);

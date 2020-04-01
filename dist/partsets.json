@@ -84,6 +84,10 @@
     ],
     "sit": ["bd", "bds", "ss", "lg", "sh", "cc"],
     "itemRight": ["ri"],
-    "swim": ["bds", "ss", "lhs", "rhs"]
+    "swim": ["bds", "ss", "lhs", "rhs"],
+
+    "torso": ["bd", "bds", "ss", "lg", "sh", "cc", "ch"],
+    "leftarm": ["lh", "lhs", "ls", "lc", "li"],
+    "rightarm": ["rh", "rhs", "rs", "rc", "ri"]
   }
 }
