@@ -6,7 +6,7 @@
   "author": "Salomão Neto <salomaosnff@yahoo.com>",
   "license": "MIT",
   "scripts": {
-    "dev": "hs -p 8081 dist"
+    "dev": "hs -p 8888 dist"
   },
   "dependencies": {
     "@types/lodash": "^4.14.149",
