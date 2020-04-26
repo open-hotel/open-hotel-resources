@@ -4,6 +4,7 @@ const { readFileSync, writeFileSync } = require("fs");
 const $ = cheerio.load(readFileSync("animations.xml", { encoding: "utf8" }), {
   xmlMode: true
 });
+// test
 
 function parseValue(value) {
   try {
