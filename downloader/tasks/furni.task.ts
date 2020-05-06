@@ -7,25 +7,32 @@ import { Item } from "../util/swf-to-lib/jpexs";
 import { Task } from "../util/tasklist/task.interface";
 import { Tasklist } from "../util/tasklist/Tasklist";
 
-export const FurniTask = ({ concurently = 5 } = {}): Task => ({
+export const FurniTask = (): Task => ({
   title: "Furnitures",
   task: (ctx, task) => {
-    const filename = resolve(process.cwd(), CONFIG.outputDir, "furnidata.json");
+    const cwd = process.cwd();
+    const filename = resolve(
+      cwd,
+      CONFIG.output_dir,
+      "furnidata.json"
+    );
     const data = readFileSync(filename, { encoding: "utf8" });
     const furnidata = JSON.parse(data);
-    const items = [...new Set(
-      Object.values(furnidata).reduce<{ name: string; revision: string }[]>(
-        (acc, item) => {
-          return acc.concat(
-            ...Object.values(item).map((i) => ({
-              name: i.classname.split("*")[0],
-              revision: i.revision,
-            }))
-          );
-        },
-        []
-      )
-    )];
+    const items = Object.values(furnidata).reduce<
+      { name: string; revision: string }[]
+    >((acc, item) => {
+      Object.values(item).forEach((i) => {
+        const name = i.classname.split("*")[0]
+        if (acc.every(a => a.name !== name)) {
+          acc.push({
+            name,
+            revision: i.revision,
+          })
+        }
+      });
+
+      return acc;
+    }, []);
 
     return new Tasklist([
       Downloader.createDownloadTask(
@@ -33,9 +40,10 @@ export const FurniTask = ({ concurently = 5 } = {}): Task => ({
           return items.reduce((acc, item: any) => {
             const filename = `${item.name}.swf`;
             const outFilename = resolve(
-              process.cwd(),
-              CONFIG.tmpDir,
+              cwd,
+              CONFIG.tmp_dir,
               "furnitures",
+              item.name,
               filename
             );
 
@@ -52,13 +60,11 @@ export const FurniTask = ({ concurently = 5 } = {}): Task => ({
           }, {});
         },
         "Download furnitures",
-        concurently
+        CONFIG.concurrently_downloads
       ),
       {
         title: "Build Furnitures",
         task: () => {
-          const cwd = process.cwd();
-
           return new Tasklist(
             items.map((item, index, arr) => {
               return {
@@ -68,24 +74,31 @@ export const FurniTask = ({ concurently = 5 } = {}): Task => ({
                     name: item.name,
                     output: resolve(
                       cwd,
-                      CONFIG.outputDir,
+                      CONFIG.output_dir,
                       "furnitures",
                       item.name
                     ),
                     items: [Item.BINARY, Item.IMAGE],
                     tmpDir: resolve(
                       cwd,
-                      CONFIG.tmpDir,
+                      CONFIG.tmp_dir,
                       "furnitures",
                       item.name
                     ),
-                    swfUrl: resolve(cwd, CONFIG.tmpDir, `${item.name}.swf`),
+                    swfUrl: resolve(
+                      cwd,
+                      CONFIG.tmp_dir,
+                      "furnitures",
+                      item.name,
+                      `${item.name}.swf`
+                    ),
                     fileAnimationFilter: (file) =>
                       file.endsWith("_animation.bin"),
                   }).createBuildTask(ctx);
                 },
               };
-            })
+            }),
+            { concurrently: CONFIG.concurrently_builds }
           );
         },
       },

@@ -29,6 +29,8 @@ export class Downloader {
         (res) => {
           if (res.statusCode >= 200 && res.statusCode < 300) {
             resolve(res);
+          } else if (res.statusCode === 404 && CONFIG.ignore_not_found_downloads) {
+            resolve(res);
           } else {
             reject(
               new Error(
@@ -94,7 +96,7 @@ export class Downloader {
               task: () => {
                 return this.download(filename, url)
                   .pipe(new DownloadProgress())
-                  .pipe(new ProgressBar(":percent [:bar] :time", {}, 40))
+                  .pipe(new ProgressBar(":percent [:bar] :time", {}, 40));
               },
             })
           ),

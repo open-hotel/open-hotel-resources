@@ -61,12 +61,10 @@ export class JPEXS {
       stdio: [null, null, null],
     });
 
-    let lastType: string = null;
-
     jpexs.stdout.pipe(progressStream);
     jpexs.on("error", (e) => progressStream.emit("error", e));
     jpexs.stderr.setEncoding("utf8").on("data", (data) => {
-      progressStream.emit("error", new Error(data));
+      progressStream.emit("error", new Error(`Failed to extract ${options.input}: ${data}`));
     });
 
     return progressStream;

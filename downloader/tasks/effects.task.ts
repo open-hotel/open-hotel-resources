@@ -7,10 +7,10 @@ import { Item } from "../util/swf-to-lib/jpexs";
 import { Task } from "../util/tasklist/task.interface";
 import { Tasklist } from "../util/tasklist/Tasklist";
 
-export const EffectsTask = ({ concurently = 5 } = {}): Task => ({
+export const EffectsTask = (): Task => ({
   title: "Effects",
   task: (ctx, task) => {
-    const filename = resolve(process.cwd(), CONFIG.outputDir, "effectmap.json");
+    const filename = resolve(process.cwd(), CONFIG.output_dir, "effectmap.json");
     const data = readFileSync(filename, { encoding: "utf8" });
     const effectmap = JSON.parse(data);
     const items = [
@@ -24,7 +24,13 @@ export const EffectsTask = ({ concurently = 5 } = {}): Task => ({
         (ctx) => {
           return items.reduce((acc, name: any) => {
             const filename = `${name}.swf`;
-            const outFilename = resolve(process.cwd(), CONFIG.tmpDir, 'effects', filename);
+            const outFilename = resolve(
+              process.cwd(),
+              CONFIG.tmp_dir,
+              "effects",
+              name,
+              filename
+            );
 
             acc[outFilename] =
               ctx.external_variables.get("flash.dynamic.avatar.download.url") +
@@ -33,7 +39,7 @@ export const EffectsTask = ({ concurently = 5 } = {}): Task => ({
           }, {});
         },
         "Download Effects",
-        concurently
+        CONFIG.concurrently_downloads
       ),
       {
         title: "Build Effects",
@@ -42,21 +48,28 @@ export const EffectsTask = ({ concurently = 5 } = {}): Task => ({
 
           return new Tasklist(
             items.map((name, index, arr) => {
-              
               return {
                 title: `(${index + 1}/${arr.length}) Build ${name}`,
                 task: (ctx) => {
                   return new LibraryTask({
                     name: name,
-                    output: resolve(cwd, CONFIG.outputDir, "effects", name),
+                    output: resolve(cwd, CONFIG.output_dir, "effects", name),
                     items: [Item.BINARY, Item.IMAGE],
-                    tmpDir: resolve(cwd, CONFIG.tmpDir, "effects", name),
-                    swfUrl: resolve(cwd, CONFIG.tmpDir, `${name}.swf`),
-                    fileAnimationFilter: file => file.endsWith('_animation.bin')
+                    tmpDir: resolve(cwd, CONFIG.tmp_dir, "effects", name),
+                    swfUrl: resolve(
+                      cwd,
+                      CONFIG.tmp_dir,
+                      "effects",
+                      name,
+                      `${name}.swf`
+                    ),
+                    fileAnimationFilter: (file) =>
+                      file.endsWith("_animation.bin"),
                   }).createBuildTask(ctx);
                 },
               };
-            })
+            }),
+            { concurrently: CONFIG.concurrently_builds }
           );
         },
       },

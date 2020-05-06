@@ -1,5 +1,6 @@
 import draft from "draftlog";
 import { Task } from "./task.interface";
+import { CONFIG } from "../../config";
 
 draft.into(console);
 
@@ -21,12 +22,20 @@ export class Tasklist {
     );
   }
 
-  private error(error: string, task: Task) {
-    const padding = "  ".repeat(this.depth)
-    error = error.replace('\n', '\n'+padding+'  ')
+  private error(error: Error, task: Task) {
+    const padding = "  ".repeat(this.depth);
+    const message = error.message.replace("\n", "\n" + padding + "  ");
+
+    if (CONFIG.exit_on_error) {
+      console.error("-=".repeat(process.stdout.columns / 2));
+      console.error(`Error in task "${task.title}"`);
+      console.error(error);
+      process.exit();
+    }
+
     return (
-      padding+
-      `\x1b[1;31m✖ ${task.title}:\x1b[0m\n  ${padding}\x1b[2K\x1b[31m${error}\x1b[0m`
+      padding +
+      `\x1b[1;31m✖ ${task.title}:\x1b[0m\n  ${padding}\x1b[2K\x1b[31m${message}\x1b[0m`
     );
   }
 
@@ -36,7 +45,8 @@ export class Tasklist {
 
   constructor(
     public tasks: Array<Task> = [],
-    options: Partial<TasklistOptions> = {}
+    options: Partial<TasklistOptions> = {},
+    public ctx?: any
   ) {
     this.tasksMirror = tasks.slice();
     this.options = Object.assign({ concurrently: 1 }, options);
@@ -49,13 +59,13 @@ export class Tasklist {
 
     if (result instanceof Tasklist) {
       result.depth = this.depth + 1;
-      result = result.run(ctx);
+      result = result.run(result.ctx === undefined ? ctx : result.ctx);
     }
 
     if (result instanceof Promise) {
       return result
         .then((r) => update(this.done(item)))
-        .catch((err) => update(this.error(err.message, item)));
+        .catch((err) => update(this.error(err, item)));
     }
 
     return new Promise((resolve, reject) => {
@@ -68,7 +78,7 @@ export class Tasklist {
           update(this.update(c.toString(), item));
         })
         .once("error", (err) => {
-          update(this.error(err.message, item));
+          update(this.error(err, item));
           reject(err);
         });
     });

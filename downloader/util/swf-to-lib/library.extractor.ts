@@ -172,10 +172,7 @@ export class LibraryTask {
     texturePackerArgs.push("--sheet", sheetImage);
     texturePackerArgs.push("--data", dataFile);
 
-    console.log(
-      CP.spawnSync(texturePackerExecutable, texturePackerArgs).stderr.toString()
-    );
-
+    CP.spawnSync(texturePackerExecutable, texturePackerArgs)
     return JSON.parse(await readFile(dataFile, { encoding: "utf8" }));
   }
 
@@ -199,9 +196,9 @@ export class LibraryTask {
     return {
       title: "Extract",
       task: () => {
-        return this.extract(
-          Path.join(CONFIG.tmpDir, `${this.options.name}.swf`)
-        ).pipe(new ProgressStream(":type (:percent) [:bar] :time"));
+        return this.extract(this.options.swfUrl).pipe(
+          new ProgressStream(":type (:percent) [:bar] :time")
+        );
       },
     };
   }
@@ -250,7 +247,7 @@ export class LibraryTask {
           this.options.fileAnimationFilter
         );
         const animations = await Promise.all(
-          animationFiles.map((file) => this.animationsToJSON(file))
+          animationFiles.map((file) => this.animationsToJSON(Path.join(ctx.bindataDir, file)))
         );
         ctx.animations = Object.assign({}, ...animations);
       },
@@ -288,6 +285,6 @@ export class LibraryTask {
       this.TASK_spritesheet(ctx),
       this.TASK_animations(ctx),
       this.TASK_save(ctx),
-    ]);
+    ], {}, {});
   }
 }

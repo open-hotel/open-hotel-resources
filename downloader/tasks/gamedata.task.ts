@@ -11,17 +11,17 @@ export const GameDataTask = (): Task => {
   const dir = process.cwd();
   const externalVariablesPath = resolve(
     dir,
-    CONFIG.tmpDir,
+    CONFIG.tmp_dir,
     "external_variables.txt"
   );
-  const figuremapPath = resolve(dir, CONFIG.tmpDir, "figuremap.xml");
-  const figuredataPath = resolve(dir, CONFIG.tmpDir, "figuredata.xml");
-  const effectmapPath = resolve(dir, CONFIG.tmpDir, "effectmap.xml");
-  const figuremapJSONPath = resolve(dir, CONFIG.outputDir, "figuremap.json");
-  const furnidataPath = resolve(dir, CONFIG.tmpDir, "furnidata.xml");
-  const figuredataJSONPath = resolve(dir, CONFIG.outputDir, "figuredata.json");
-  const effectmapJSONPath = resolve(dir, CONFIG.outputDir, "effectmap.json");
-  const furnidataJSONPath = resolve(dir, CONFIG.outputDir, "furnidata.json");
+  const figuremapPath = resolve(dir, CONFIG.tmp_dir, "figuremap.xml");
+  const figuredataPath = resolve(dir, CONFIG.tmp_dir, "figuredata.xml");
+  const effectmapPath = resolve(dir, CONFIG.tmp_dir, "effectmap.xml");
+  const figuremapJSONPath = resolve(dir, CONFIG.output_dir, "figuremap.json");
+  const furnidataPath = resolve(dir, CONFIG.tmp_dir, "furnidata.xml");
+  const figuredataJSONPath = resolve(dir, CONFIG.output_dir, "figuredata.json");
+  const effectmapJSONPath = resolve(dir, CONFIG.output_dir, "effectmap.json");
+  const furnidataJSONPath = resolve(dir, CONFIG.output_dir, "furnidata.json");
 
   return {
     title: "Gamedata",
@@ -54,7 +54,7 @@ export const GameDataTask = (): Task => {
             };
           },
           "Download files",
-          3
+          CONFIG.concurrently_downloads
         ),
         {
           title: "Convert figuremap.xml to figuremap.json",
