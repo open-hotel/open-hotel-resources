@@ -1,30 +1,30 @@
 Arguments: 
-  /usr/bin/node /home/sallon/.yarn/bin/yarn.js add -D @types/draftlog
+  /usr/bin/node /home/adrian/.yarn/bin/yarn.js add node-canvas
 
 PATH: 
-  /home/sallon/.yarn/bin:/home/sallon/.config/yarn/global/node_modules/.bin:/home/sallon/.local/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/var/lib/flatpak/exports/bin:/usr/lib/jvm/default/bin:/usr/bin/site_perl:/usr/bin/vendor_perl:/usr/bin/core_perl:/var/lib/snapd/snap/bin:/home/sallon/Android/Sdk/emulator:/home/sallon/Android/Sdk/platform-tools:/opt/flutter/bin:/home/sallon/.yarn/bin:/usr/local/go/bin:/home/sallon/go/bin
+  /home/adrian/.yarn/bin:/home/adrian/.config/yarn/global/node_modules/.bin:/home/adrian/.yarn/bin:/home/adrian/.local/share/umake/bin:/home/adrian/.yarn/bin:/home/adrian/.config/yarn/global/node_modules/.bin:/home/adrian/.yarn/bin:/home/adrian/.local/share/umake/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/usr/local/go/bin:/usr/local/go/bin:/bin:/home/adrian/go:/home/adrian/Projetos/Go/bin:/home/adrian/Android/Sdk/tools:/home/adrian/Android/Sdk/platform-tools:/bin:/home/adrian/go:/home/adrian/Projetos/Go/bin:/home/adrian/Android/Sdk/tools:/home/adrian/Android/Sdk/platform-tools
 
 Yarn version: 
   1.22.4
 
 Node version: 
-  10.20.1
+  12.16.3
 
 Platform: 
   linux x64
 
 Trace: 
-  Error: https://registry.yarnpkg.com/@types%2fdraftlog: Not found
-      at Request.params.callback [as _callback] (/home/sallon/.yarn/lib/cli.js:66987:18)
-      at Request.self.callback (/home/sallon/.yarn/lib/cli.js:140748:22)
-      at Request.emit (events.js:198:13)
-      at Request.<anonymous> (/home/sallon/.yarn/lib/cli.js:141720:10)
-      at Request.emit (events.js:198:13)
-      at IncomingMessage.<anonymous> (/home/sallon/.yarn/lib/cli.js:141642:12)
-      at Object.onceWrapper (events.js:286:20)
-      at IncomingMessage.emit (events.js:203:15)
-      at endReadableNT (_stream_readable.js:1145:12)
-      at process._tickCallback (internal/process/next_tick.js:63:19)
+  Error: https://registry.yarnpkg.com/node-canvas: Not found
+      at Request.params.callback [as _callback] (/home/adrian/.yarn/lib/cli.js:66987:18)
+      at Request.self.callback (/home/adrian/.yarn/lib/cli.js:140748:22)
+      at Request.emit (events.js:310:20)
+      at Request.<anonymous> (/home/adrian/.yarn/lib/cli.js:141720:10)
+      at Request.emit (events.js:310:20)
+      at IncomingMessage.<anonymous> (/home/adrian/.yarn/lib/cli.js:141642:12)
+      at Object.onceWrapper (events.js:416:28)
+      at IncomingMessage.emit (events.js:322:22)
+      at endReadableNT (_stream_readable.js:1187:12)
+      at processTicksAndRejections (internal/process/task_queues.js:84:21)
 
 npm manifest: 
   {
