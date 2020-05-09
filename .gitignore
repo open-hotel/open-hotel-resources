@@ -3,4 +3,4 @@ node_modules/
 raw/
 tmp/
 out/
-Habbo.swf
+*.swf
