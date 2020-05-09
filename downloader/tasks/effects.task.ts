@@ -6,11 +6,16 @@ import { LibraryTask } from "../util/swf-to-lib/library.extractor";
 import { Item } from "../util/swf-to-lib/jpexs";
 import { Task } from "../util/tasklist/task.interface";
 import { Tasklist } from "../util/tasklist/Tasklist";
+import { ItemType } from "../util/extractor/types";
 
 export const EffectsTask = (): Task => ({
   title: "Effects",
   task: (ctx, task) => {
-    const filename = resolve(process.cwd(), CONFIG.output_dir, "effectmap.json");
+    const filename = resolve(
+      process.cwd(),
+      CONFIG.output_dir,
+      "effectmap.json"
+    );
     const data = readFileSync(filename, { encoding: "utf8" });
     const effectmap = JSON.parse(data);
     const items = [
@@ -54,7 +59,7 @@ export const EffectsTask = (): Task => ({
                   return new LibraryTask({
                     name: name,
                     output: resolve(cwd, CONFIG.output_dir, "effects", name),
-                    items: [Item.BINARY, Item.IMAGE],
+                    items: [ItemType.BINARY, ItemType.IMAGE],
                     tmpDir: resolve(cwd, CONFIG.tmp_dir, "effects", name),
                     swfUrl: resolve(
                       cwd,

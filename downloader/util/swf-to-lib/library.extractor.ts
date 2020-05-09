@@ -10,9 +10,11 @@ import { LibraryManifest, LibraryJson } from "./library.interface";
 import { tryParse } from "./util";
 import { JPEXS, Item } from "./jpexs";
 import { CONFIG } from "../../config";
-import { ProgressStream } from "../downloader/progress";
+import { ProgressStream } from "../progress";
 import { Tasklist } from "../tasklist/Tasklist";
 import { Task } from "../tasklist/task.interface";
+import { extractSWF } from "../extractor";
+import { ItemType } from "../extractor/types";
 
 const mkdir = Util.promisify(FS.mkdir);
 const readFile = Util.promisify(FS.readFile);
@@ -25,7 +27,7 @@ interface LibraryOptions {
   swfUrl: string;
   tmpDir: string;
   output: string;
-  items: Item[];
+  items: ItemType[];
   fileAnimationFilter?: (filename: string, index: number) => boolean;
 }
 
@@ -49,10 +51,10 @@ export class LibraryTask {
       return stream;
     }
 
-    return new JPEXS().export({
-      input: filename,
-      output: this.options.tmpDir,
-      items: this.options.items,
+    return extractSWF({
+      inputFile: filename,
+      outputDir: this.options.output,
+      itemTypes: this.options.items,
     });
   }
 
@@ -172,7 +174,7 @@ export class LibraryTask {
     texturePackerArgs.push("--sheet", sheetImage);
     texturePackerArgs.push("--data", dataFile);
 
-    CP.spawnSync(texturePackerExecutable, texturePackerArgs)
+    CP.spawnSync(texturePackerExecutable, texturePackerArgs);
     return JSON.parse(await readFile(dataFile, { encoding: "utf8" }));
   }
 
@@ -247,7 +249,9 @@ export class LibraryTask {
           this.options.fileAnimationFilter
         );
         const animations = await Promise.all(
-          animationFiles.map((file) => this.animationsToJSON(Path.join(ctx.bindataDir, file)))
+          animationFiles.map((file) =>
+            this.animationsToJSON(Path.join(ctx.bindataDir, file))
+          )
         );
         ctx.animations = Object.assign({}, ...animations);
       },
@@ -278,13 +282,17 @@ export class LibraryTask {
   }
 
   createBuildTask(ctx: any): Tasklist {
-    return new Tasklist([
-      this.TASK_dir(ctx),
-      this.TASK_extract(ctx),
-      this.TASK_manifest(ctx),
-      this.TASK_spritesheet(ctx),
-      this.TASK_animations(ctx),
-      this.TASK_save(ctx),
-    ], {}, {});
+    return new Tasklist(
+      [
+        this.TASK_dir(ctx),
+        this.TASK_extract(ctx),
+        // this.TASK_manifest(ctx),
+        // this.TASK_spritesheet(ctx),
+        // this.TASK_animations(ctx),
+        // this.TASK_save(ctx),
+      ],
+      {},
+      {}
+    );
   }
 }
