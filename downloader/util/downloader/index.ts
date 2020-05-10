@@ -4,7 +4,7 @@ import { http, https, FollowResponse } from "follow-redirects";
 import FS from "fs";
 import { dirname, basename } from "path";
 import { CONFIG } from "../../config";
-import { Transform, PassThrough } from "stream";
+import { PassThrough } from "stream";
 import { ProgressStream } from "../progress";
 import { DownloadProgress } from "./progress";
 import { Tasklist } from "../tasklist/Tasklist";
@@ -53,12 +53,10 @@ export class Downloader {
     title?: string
   ): NodeJS.ReadableStream {
     if (FS.existsSync(filename)) {
-      const stream = new ProgressStream();
+      const stream = new DownloadProgress();
       stream.end();
       return stream;
     }
-
-    const stream = new PassThrough();
 
     if (url.startsWith("//")) {
       url = `${CONFIG.protocol}:${url}`;
@@ -68,17 +66,21 @@ export class Downloader {
       title = `Download ${url}`;
     }
 
+    const stream = new DownloadProgress();
+
     // Request
     this.fetch(url)
       .then((res) => {
+        stream.total = Number(res.headers["content-length"]) || 0;
+
         // Create directory
         FS.mkdirSync(dirname(filename), { recursive: true });
 
         // Write file
-        res.pipe(stream).pipe(FS.createWriteStream(filename));
+        res.pipe(stream);
+        res.pipe(FS.createWriteStream(filename));
       })
       .catch((err) => {
-        stream.end();
         stream.destroy(err);
       });
 
@@ -98,9 +100,13 @@ export class Downloader {
             ([filename, url], index, arr) => ({
               title: `(${index + 1}/${arr.length}) ${basename(filename)}`,
               task: () => {
-                return this.download(filename, url)
-                  .pipe(new DownloadProgress())
-                  .pipe(new ProgressStream(":percent [:bar] :time", {}, 40));
+                return this.download(filename, url).pipe(
+                  new ProgressStream(
+                    ":percent [:bar] (:loadedBytes/:totalBytes) :speedBytes :time",
+                    {},
+                    80
+                  )
+                );
               },
             })
           ),

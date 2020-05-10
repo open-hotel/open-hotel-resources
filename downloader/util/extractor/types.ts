@@ -6,7 +6,7 @@ export enum ItemType {
 
 export enum TypeExtension {
   IMAGE = "png",
-  BINARY = "xml",
+  BINARY = "bin",
 }
 
 export enum TypeDirectories {

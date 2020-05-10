@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 import zlib from "zlib";
-import sharp, { SharpOptions } from "sharp";
+import sharp from "sharp";
 
 import {
   ItemType,
@@ -12,7 +12,6 @@ import {
   ExtractOptions,
 } from "./types";
 import { ExtractProgress } from "./progress";
-import { isDuration } from "moment";
 
 function readString(
   buffer: Buffer,
@@ -61,8 +60,7 @@ async function extractImage(buffer: Buffer) {
 
   // Normalize buffer data form argb to rgba
   for (let i = 0; i < data.length; i += 4) {
-    const argbBuffer = new Buffer(4);
-    data.slice(i, i + 4).copy(argbBuffer);
+    const argbBuffer = Buffer.from(data.slice(i, i + 4));
     for (let j = 0; j < argbBuffer.length; j++) {
       data[i + j] = argbBuffer[(j + 1) % argbBuffer.length];
     }
@@ -82,7 +80,7 @@ async function extractImage(buffer: Buffer) {
 }
 
 function extractBinary(buffer: Buffer) {
-  const length = buffer.length - 5;
+  const length = buffer.length;
   return {
     symbol_id: buffer.readUInt16LE(0),
     data: Buffer.from(readString(buffer, 6, length)),

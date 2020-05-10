@@ -1,6 +1,7 @@
 import { Transform } from "stream";
 import { performance } from "perf_hooks";
 import moment from "moment";
+import numeral from "numeral";
 
 export class ListenErrorStream extends Transform {
   constructor() {
@@ -68,10 +69,10 @@ export class ProgressStream extends ListenErrorStream {
     this.loadedBytes = frame.loaded || 0;
 
     let ratio = 1;
-    let percent = "-";
+    let percent = "--%";
     let bar = "";
 
-    if (isFinite(frame.total)) {
+    if (frame.total > 0 && isFinite(frame.total)) {
       ratio = Math.min(frame.loaded / frame.total, 1);
       percent = (ratio * 100).toPrecision(3) + "%";
     }
@@ -80,8 +81,11 @@ export class ProgressStream extends ListenErrorStream {
       ...this.tokens,
       total: Math.round(this.totalBytes),
       loaded: Math.round(this.loadedBytes),
+      totalBytes: numeral(this.totalBytes).format("0.00b"),
+      loadedBytes: numeral(this.loadedBytes).format("0.00b"),
       percent,
-      speed: Math.round(this.speed) + " bps",
+      speed: Math.round(this.speed),
+      speedBytes: numeral(this.speed).format("0.00b") + "/s",
       eta: this.format(this.eta),
       time: this.format(this.time),
     };
