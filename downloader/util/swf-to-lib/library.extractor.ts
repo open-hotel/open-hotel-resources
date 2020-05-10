@@ -3,16 +3,16 @@ import * as FS from "fs";
 import * as Util from "util";
 import * as CP from "child_process";
 import { PassThrough } from "stream";
-import Listr from "listr";
 import Cheerio from "cheerio";
 
 import { LibraryManifest, LibraryJson } from "./library.interface";
-import { tryParse } from "./util";
-import { JPEXS, Item } from "./jpexs";
+import { tryParse } from "../";
 import { CONFIG } from "../../config";
-import { ProgressStream } from "../downloader/progress";
+import { ProgressStream } from "../progress";
 import { Tasklist } from "../tasklist/Tasklist";
 import { Task } from "../tasklist/task.interface";
+import { extractSWF } from "../extractor";
+import { ItemType } from "../extractor/types";
 
 const mkdir = Util.promisify(FS.mkdir);
 const readFile = Util.promisify(FS.readFile);
@@ -25,7 +25,7 @@ interface LibraryOptions {
   swfUrl: string;
   tmpDir: string;
   output: string;
-  items: Item[];
+  items: ItemType[];
   fileAnimationFilter?: (filename: string, index: number) => boolean;
 }
 
@@ -49,10 +49,10 @@ export class LibraryTask {
       return stream;
     }
 
-    return new JPEXS().export({
-      input: filename,
-      output: this.options.tmpDir,
-      items: this.options.items,
+    return extractSWF({
+      inputFile: filename,
+      outputDir: this.options.tmpDir,
+      itemTypes: this.options.items,
     });
   }
 
@@ -104,60 +104,149 @@ export class LibraryTask {
     const animationsXML = Cheerio.load(animationsData, { xmlMode: true });
     const animations = animationsXML("animation").toArray();
 
-    const extractPart = (acc, el) => {
-      const part = Cheerio(el);
-      const id = part.attr("id");
+    // Frames
+    const getFrames = (frames: Cheerio) => {
+      if (!frames.length) return undefined;
+      frames.toArray().map((el) => {
+        const frame = Cheerio(el);
+        const bodyparts = frame.children("bodypart,fx").toArray();
 
-      part.removeAttr("id");
+        return {
+          bodyparts: bodyparts.reduce((acc, el) => {
+            const bodypart = Cheerio(el);
+            const id = bodypart.attr("id");
+            bodypart.removeAttr("id");
 
-      acc[id] = Object.entries(part.attr()).reduce((acc, [key, value]) => {
-        acc[key] = tryParse(value);
-        return acc;
-      }, {});
+            // Body Part Items
+            const items = bodypart
+              .children("item")
+              .toArray()
+              .reduce((acc, el) => {
+                const item = Cheerio(el);
+                const id = item.attr("id");
+                item.removeAttr("id");
 
-      return acc;
+                acc[id] = tryParse(item.attr());
+
+                return acc;
+              }, {});
+
+            acc[id] = {
+              ...tryParse(bodypart.attr()),
+              items: Object.keys(items).length ? items : undefined,
+            };
+            return acc;
+          }, {}),
+        };
+      });
     };
+    // End Frames
 
     return animations.reduce((acc, el) => {
       const animation = Cheerio(el);
       const name = animation.attr("name");
-      const frames = animation.children("frame").toArray();
+      const desc = animation.attr("desc");
+
+      // Frames
+      const frames = getFrames(animation.children("frame"));
+
+      // Overrides
+      const overrides = animation
+        .children("override")
+        .toArray()
+        .reduce((acc, el) => {
+          const override = Cheerio(el);
+          const id = override.attr("override");
+          override.removeAttr("override");
+
+          acc[id] = {
+            ...tryParse(override.attr()),
+            frames: getFrames(override.children("frame")),
+          };
+          return acc;
+        }, {});
+      // End Overrides
+
+      // Add
+      const add = animation
+        .children("add")
+        .toArray()
+        .reduce((acc, el) => {
+          const add = Cheerio(el);
+          const id = add.attr("id");
+          add.removeAttr("id");
+
+          acc[id] = tryParse(add.attr());
+
+          return acc;
+        }, {});
+      // End Add
+
+      // Remove
+      const remove = animation
+        .children("remove")
+        .toArray()
+        .map((el) => Cheerio(el).attr("id"));
+      // End Remove
+
+      // Sprite
+      const sprites = animation
+        .children("sprite")
+        .toArray()
+        .reduce((acc, el) => {
+          const sprite = Cheerio(el);
+          const id = sprite.attr("id");
+          sprite.removeAttr("id");
+          const directions = sprite.children("direction").toArray();
+
+          acc[id] = {
+            ...tryParse(sprite.attr()),
+            directions:
+              directions.length === 0
+                ? undefined
+                : directions.reduce((acc, el) => {
+                    const dir = Cheerio(el);
+                    const id = dir.attr("id");
+                    dir.removeAttr("id");
+
+                    acc[id] = tryParse(dir.attr());
+
+                    return acc;
+                  }, {}),
+          };
+
+          return acc;
+        }, {});
+      // End Sprite
+
+      // Shadow
+      const shadow = animation.children("shadow").first().attr("id");
+      // End Shadow
+
+      // Directions
+      const direction = tryParse(
+        animation.children("direction").first().attr()
+      );
+      // End Directions
 
       acc[name] = {
-        frames: frames.map((el) => {
-          const frame = Cheerio(el);
-          const parts = frame.children("bodypart").toArray();
-          const fxParts = frame.children("fx").toArray();
-
-          const bodyParts = parts.reduce(extractPart, {});
-          const fx = fxParts.reduce(extractPart, {});
-
-          return {
-            bodyParts,
-            fx,
-          };
-        }),
+        desc,
+        frames,
+        overrides: Object.keys(overrides).length ? overrides : undefined,
+        add: Object.keys(add).length ? add : undefined,
+        remove: remove.length ? remove : undefined,
+        sprites: Object.keys(sprites).length ? sprites : undefined,
+        shadow: shadow || undefined,
+        direction: direction || undefined,
       };
-
       return acc;
     }, {});
   }
 
   async createSpritesheet(
     imagesDir: string,
-    texturePackerExecutable = "/usr/bin/TexturePacker",
-    texturePackerArgs = [
-      "--format",
-      "pixijs4",
-      "--texture-format",
-      "png8",
-      "--opt",
-      "RGBA4444",
-      "--max-width",
-      "3000",
-      "--max-height",
-      "3000",
-    ]
+    texturePackerExecutable = CONFIG.texture_packer.executable,
+    texturePackerArgs = [...CONFIG.texture_packer.args]
   ) {
     const sheetImage = Path.join(
       this.options.output,
@@ -172,7 +261,11 @@ export class LibraryTask {
     texturePackerArgs.push("--sheet", sheetImage);
     texturePackerArgs.push("--data", dataFile);
 
-    CP.spawnSync(texturePackerExecutable, texturePackerArgs)
+    const resPacker = CP.spawnSync(texturePackerExecutable, texturePackerArgs);
+    if (resPacker.stderr.length) {
+      console.error(resPacker.stderr.toString());
+      if (CONFIG.exit_on_error) process.exit(1);
+    }
     return JSON.parse(await readFile(dataFile, { encoding: "utf8" }));
   }
 
@@ -184,7 +277,7 @@ export class LibraryTask {
     return {
       title: "Create temporary directory",
       task: async (ctx) => {
-        ctx.bindataDir = Path.join(this.options.tmpDir, "binaryData");
+        ctx.bindataDir = Path.join(this.options.tmpDir, "binary");
         ctx.imagesDir = Path.join(this.options.tmpDir, "images");
 
         await mkdir(this.options.tmpDir, { recursive: true });
@@ -247,7 +340,9 @@ export class LibraryTask {
           this.options.fileAnimationFilter
         );
         const animations = await Promise.all(
-          animationFiles.map((file) => this.animationsToJSON(Path.join(ctx.bindataDir, file)))
+          animationFiles.map((file) =>
+            this.animationsToJSON(Path.join(ctx.bindataDir, file))
+          )
         );
         ctx.animations = Object.assign({}, ...animations);
       },
@@ -271,20 +366,24 @@ export class LibraryTask {
           };
 
           await mkdir(Path.dirname(filename), { recursive: true });
-          return writeFile(filename, JSON.stringify(data, null, 2));
+          return writeFile(filename, JSON.stringify(data));
         }
       },
     };
   }
 
   createBuildTask(ctx: any): Tasklist {
-    return new Tasklist([
-      this.TASK_dir(ctx),
-      this.TASK_extract(ctx),
-      this.TASK_manifest(ctx),
-      this.TASK_spritesheet(ctx),
-      this.TASK_animations(ctx),
-      this.TASK_save(ctx),
-    ], {}, {});
+    return new Tasklist(
+      [
+        this.TASK_dir(ctx),
+        this.TASK_extract(ctx),
+        this.TASK_manifest(ctx),
+        this.TASK_spritesheet(ctx),
+        this.TASK_animations(ctx),
+        this.TASK_save(ctx),
+      ],
+      {},
+      {}
+    );
   }
 }

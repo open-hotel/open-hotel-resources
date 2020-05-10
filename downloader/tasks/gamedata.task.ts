@@ -1,5 +1,5 @@
 import { dirname, resolve } from "path";
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from "fs";
+import { readFileSync, writeFileSync, mkdirSync, existsSync, fstat } from "fs";
 import Cheerio from "cheerio";
 import { Downloader } from "../util/downloader";
 import { CONFIG } from "../config";
@@ -18,6 +18,16 @@ export const GameDataTask = (): Task => {
   const figuredataPath = resolve(dir, CONFIG.tmp_dir, "figuredata.xml");
   const effectmapPath = resolve(dir, CONFIG.tmp_dir, "effectmap.xml");
   const figuremapJSONPath = resolve(dir, CONFIG.output_dir, "figuremap.json");
+  const avatarActionsPath = resolve(
+    dir,
+    CONFIG.tmp_dir,
+    "HabboAvatarActions.xml"
+  );
+  const avatarActionsJSONPath = resolve(
+    dir,
+    CONFIG.output_dir,
+    "HabboAvatarActions.json"
+  );
   const furnidataPath = resolve(dir, CONFIG.tmp_dir, "furnidata.xml");
   const figuredataJSONPath = resolve(dir, CONFIG.output_dir, "figuredata.json");
   const effectmapJSONPath = resolve(dir, CONFIG.output_dir, "effectmap.json");
@@ -51,6 +61,9 @@ export const GameDataTask = (): Task => {
               [effectmapPath]: `${ctx.external_variables.get(
                 "flash.client.url"
               )}effectmap.xml`,
+              [avatarActionsPath]: `${ctx.external_variables.get(
+                "flash.client.url"
+              )}HabboAvatarActions.xml`,
             };
           },
           "Download files",
@@ -230,6 +243,58 @@ export const GameDataTask = (): Task => {
             };
 
             return writeFileSync(furnidataJSONPath, JSON.stringify(furnidata));
+          },
+        },
+        {
+          title: "Convert HabboAvatarActions.xml to JSON",
+          task: async (ctx) => {
+            if (existsSync(avatarActionsJSONPath)) {
+              return;
+            }
+
+            const data = readFileSync(avatarActionsPath, { encoding: "utf8" });
+            const actionsXML = Cheerio.load(data, { xmlMode: true });
+
+            const actions = actionsXML("action").toArray();
+
+            const actionsJSON = actions.reduce((acc, el) => {
+              const action = Cheerio(el);
+              const id = action.attr("id");
+              action.removeAttr("id");
+
+              const types = action.find("type").toArray();
+              const params = action.find("param").toArray();
+
+              acc[id] = {
+                ...action.attr(),
+                types:
+                  types.length === 0
+                    ? undefined
+                    : types.reduce((acc, el) => {
+                        const type = Cheerio(el);
+                        const id = type.attr("id");
+                        type.removeAttr("id");
+
+                        acc[id] = type.attr();
+
+                        return acc;
+                      }, {}),
+                params:
+                  params.length === 0
+                    ? undefined
+                    : params.reduce((acc, el) => {
+                        const param = Cheerio(el);
+                        acc[param.attr("id")] = param.attr("value");
+                        return acc;
+                      }, {}),
+              };
+              return acc;
+            }, {});
+
+            return writeFileSync(
+              avatarActionsJSONPath,
+              JSON.stringify(actionsJSON)
+            );
           },
         },
       ]),

@@ -6,28 +6,25 @@ import { LibraryTask } from "../util/swf-to-lib/library.extractor";
 import { Item } from "../util/swf-to-lib/jpexs";
 import { Task } from "../util/tasklist/task.interface";
 import { Tasklist } from "../util/tasklist/Tasklist";
+import { ItemType } from "../util/extractor/types";
 
 export const FurniTask = (): Task => ({
   title: "Furnitures",
   task: (ctx, task) => {
     const cwd = process.cwd();
-    const filename = resolve(
-      cwd,
-      CONFIG.output_dir,
-      "furnidata.json"
-    );
+    const filename = resolve(cwd, CONFIG.output_dir, "furnidata.json");
     const data = readFileSync(filename, { encoding: "utf8" });
     const furnidata = JSON.parse(data);
     const items = Object.values(furnidata).reduce<
       { name: string; revision: string }[]
     >((acc, item) => {
       Object.values(item).forEach((i) => {
-        const name = i.classname.split("*")[0]
-        if (acc.every(a => a.name !== name)) {
+        const name = i.classname.split("*")[0];
+        if (acc.every((a) => a.name !== name)) {
           acc.push({
             name,
             revision: i.revision,
-          })
+          });
         }
       });
 
@@ -78,7 +75,7 @@ export const FurniTask = (): Task => ({
                       "furnitures",
                       item.name
                     ),
-                    items: [Item.BINARY, Item.IMAGE],
+                    items: [ItemType.BINARY, ItemType.IMAGE],
                     tmpDir: resolve(
                       cwd,
                       CONFIG.tmp_dir,

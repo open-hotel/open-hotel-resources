@@ -1,33 +1,17 @@
 import fs from "fs";
 import path from "path";
 import zlib from "zlib";
-import sharp, { SharpOptions } from "sharp";
+import sharp from "sharp";
 
-export enum ItemType {
-  IMAGE = 36,
-  BINARY = 87,
-  SYMBOL = 76,
-}
-
-export enum TypeExtension {
-  IMAGE = "png",
-  BINARY = "xml",
-}
-
-export enum TypeDirectories {
-  IMAGE = "images",
-  BINARY = "binary",
-}
-
-export enum ImageTypes {
-  PNG = 5,
-}
-
-function read(fd: number, start: number, length: number) {
-  const buffer = Buffer.alloc(length);
-  fs.readSync(fd, buffer, 0, length, start);
-  return buffer;
-}
+import {
+  ItemType,
+  TypeExtension,
+  TypeDirectories,
+  ImageTypes,
+  ResourceItem,
+  ExtractOptions,
+} from "./types";
+import { ExtractProgress } from "./progress";
 
 function readString(
   buffer: Buffer,
@@ -60,7 +44,7 @@ function extractSymbols(buffer: Buffer) {
   return symbols;
 }
 
-async function extractImages(buffer: Buffer) {
+async function extractImage(buffer: Buffer) {
   const tag = {
     symbol_id: buffer.readUInt16LE(0),
     image: null,
@@ -74,40 +58,33 @@ async function extractImages(buffer: Buffer) {
   // If image format isn't PNG return empty list
   if (tag.format != ImageTypes.PNG) return tag;
 
-  // Image output options
-  const imageOptions: SharpOptions = {
+  // Normalize buffer data form argb to rgba
+  for (let i = 0; i < data.length; i += 4) {
+    const argbBuffer = Buffer.from(data.slice(i, i + 4));
+    for (let j = 0; j < argbBuffer.length; j++) {
+      data[i + j] = argbBuffer[(j + 1) % argbBuffer.length];
+    }
+  }
+
+  // Parse PNG image and return a buffer
+  tag.image = await sharp(data, {
     raw: {
       channels: 4,
-      width: tag.width,
       height: tag.height,
+      width: tag.width,
     },
-  };
-
-  tag.image = await sharp(data, imageOptions).png().toBuffer();
+  })
+    .png()
+    .toBuffer();
   return tag;
 }
 
 function extractBinary(buffer: Buffer) {
-  const length = buffer.length - 5;
+  const length = buffer.length;
   return {
     symbol_id: buffer.readUInt16LE(0),
     data: Buffer.from(readString(buffer, 6, length)),
   };
-}
-
-interface ExtractOptions {
-  inputFile: string;
-  outputDir: string;
-  filter: (item: ResourceItem) => boolean;
-  fileName: (item: ResourceItem, extName: string) => string;
-  itemTypes: ItemType[];
-}
-
-interface ResourceItem {
-  type: ItemType;
-  name: string;
-  symbol_id: number;
-  data: Buffer;
 }
 
 function getTagHeader(buffer: Buffer, cursor: number) {
@@ -128,8 +105,10 @@ function getTagHeader(buffer: Buffer, cursor: number) {
   };
 }
 
-export async function extractSWF(config: Partial<ExtractOptions>) {
+export function extractSWF(config: Partial<ExtractOptions>) {
   const resourceItems: ResourceItem[] = [];
+  let totalResources = 0;
+
   let symbols = {};
 
   const options: Partial<ExtractOptions> = {
@@ -164,71 +143,96 @@ export async function extractSWF(config: Partial<ExtractOptions>) {
     if (tag_code == ItemType.SYMBOL) {
       symbols = extractSymbols(buffer.slice(cursor, cursor + tag_length));
       break;
+    } else if (tag_code in ItemType) {
+      totalResources++;
     }
 
     cursor += tag_length;
   }
 
-  for (let cursor = header_length; cursor < file_length; ) {
-    const { tag_code, tag_length, offset } = getTagHeader(buffer, cursor);
-    cursor += offset;
+  /************************************
+   *     CREATE EXTRACT PROGRESS      *
+   ************************************/
+  const progress = new ExtractProgress(totalResources);
 
-    const types = {
-      async [ItemType.IMAGE]() {
-        const tag = await extractImages(
-          buffer.slice(cursor, cursor + tag_length)
-        );
-        if (tag.image) {
-          return {
-            type: ItemType.IMAGE,
-            symbol_id: tag.symbol_id,
-            name: symbols[tag.symbol_id] ?? `symbol_${tag.symbol_id}`,
-            data: tag.image,
-          };
-        }
-      },
-      async [ItemType.BINARY]() {
-        const tag = extractBinary(buffer.slice(cursor, cursor + tag_length));
-        if (tag.data) {
-          return {
-            type: ItemType.BINARY,
-            symbol_id: tag.symbol_id,
-            name: symbols[tag.symbol_id] ?? `symbol_${tag.symbol_id}`,
-            data: tag.data,
-          };
-        }
-      },
-    };
+  (async () => {
+    for (let cursor = header_length; cursor < file_length; ) {
+      const { tag_code, tag_length, offset } = getTagHeader(buffer, cursor);
+      cursor += offset;
 
-    // Filter and save extracted item
-    if (tag_code in types && new Set(options.itemTypes).has(tag_code)) {
-      const item = await types[tag_code]();
-      if (options.filter(item)) resourceItems.push(item);
+      const types = {
+        async [ItemType.IMAGE]() {
+          const tag = await extractImage(
+            buffer.slice(cursor, cursor + tag_length)
+          );
+          if (tag.image) {
+            return {
+              type: ItemType.IMAGE,
+              symbol_id: tag.symbol_id,
+              name: symbols[tag.symbol_id] ?? `symbol_${tag.symbol_id}`,
+              data: tag.image,
+            };
+          }
+        },
+        async [ItemType.BINARY]() {
+          const tag = extractBinary(buffer.slice(cursor, cursor + tag_length));
+          if (tag.data) {
+            return {
+              type: ItemType.BINARY,
+              symbol_id: tag.symbol_id,
+              name: symbols[tag.symbol_id] ?? `symbol_${tag.symbol_id}`,
+              data: tag.data,
+            };
+          }
+        },
+      };
+
+      // Filter and save extracted item
+      if (tag_code in types && new Set(options.itemTypes).has(tag_code)) {
+        const item = await types[tag_code]();
+        if (options.filter(item)) resourceItems.push(item);
+      }
+
+      cursor += tag_length;
     }
 
-    cursor += tag_length;
-  }
+    /*************************************
+     *         MAKE OUTPUT DIRS          *
+     *************************************/
+    for (const type in TypeDirectories) {
+      fs.mkdirSync(path.join(options.outputDir, TypeDirectories[type]), {
+        recursive: true,
+      });
+    }
 
-  /*************************************
-   *         MAKE OUTPUT DIRS          *
-   *************************************/
-  for (const type in TypeDirectories) {
-    fs.mkdirSync(path.join(options.outputDir, TypeDirectories[type]), {
-      recursive: true,
-    });
-  }
+    /*************************************
+     *       WRITE RESOURCE FILES        *
+     *************************************/
+    progress.total = resourceItems.length;
 
-  /*************************************
-   *       WRITE RESOURCE FILES        *
-   *************************************/
-  for (const item of resourceItems) {
-    fs.writeFileSync(
-      path.join(
-        options.outputDir,
-        TypeDirectories[ItemType[item.type]],
-        options.fileName(item, TypeExtension[ItemType[item.type]])
-      ),
-      item.data
-    );
-  }
+    for (const item of resourceItems) {
+      item.fileName = options.fileName(
+        item,
+        TypeExtension[ItemType[item.type]]
+      );
+
+      // Write file
+      fs.writeFileSync(
+        path.join(
+          options.outputDir,
+          TypeDirectories[ItemType[item.type]],
+          item.fileName
+        ),
+        item.data
+      );
+
+      // Add loaded item to progress bar
+      progress.write(item);
+    }
+
+    // End progress
+    progress.end();
+  })();
+
+  return progress;
 }

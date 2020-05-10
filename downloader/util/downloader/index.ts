@@ -4,8 +4,9 @@ import { http, https, FollowResponse } from "follow-redirects";
 import FS from "fs";
 import { dirname, basename } from "path";
 import { CONFIG } from "../../config";
-import { Transform, PassThrough } from "stream";
-import { ProgressStream as ProgressBar, DownloadProgress } from "./progress";
+import { PassThrough } from "stream";
+import { ProgressStream } from "../progress";
+import { DownloadProgress } from "./progress";
 import { Tasklist } from "../tasklist/Tasklist";
 import { Task } from "../tasklist/task.interface";
 
@@ -29,7 +30,10 @@ export class Downloader {
         (res) => {
           if (res.statusCode >= 200 && res.statusCode < 300) {
             resolve(res);
-          } else if (res.statusCode === 404 && CONFIG.ignore_not_found_downloads) {
+          } else if (
+            res.statusCode === 404 &&
+            CONFIG.ignore_not_found_downloads
+          ) {
             resolve(res);
           } else {
             reject(
@@ -49,12 +53,10 @@ export class Downloader {
     title?: string
   ): NodeJS.ReadableStream {
     if (FS.existsSync(filename)) {
-      const stream = new ProgressBar();
+      const stream = new DownloadProgress();
       stream.end();
       return stream;
     }
-
-    const stream = new PassThrough();
 
     if (url.startsWith("//")) {
       url = `${CONFIG.protocol}:${url}`;
@@ -64,17 +66,21 @@ export class Downloader {
       title = `Download ${url}`;
     }
 
+    const stream = new DownloadProgress();
+
     // Request
     this.fetch(url)
       .then((res) => {
+        stream.total = Number(res.headers["content-length"]) || 0;
+
         // Create directory
         FS.mkdirSync(dirname(filename), { recursive: true });
 
         // Write file
-        res.pipe(stream).pipe(FS.createWriteStream(filename));
+        res.pipe(stream);
+        res.pipe(FS.createWriteStream(filename));
       })
       .catch((err) => {
-        stream.end();
         stream.destroy(err);
       });
 
@@ -94,9 +100,13 @@ export class Downloader {
             ([filename, url], index, arr) => ({
               title: `(${index + 1}/${arr.length}) ${basename(filename)}`,
               task: () => {
-                return this.download(filename, url)
-                  .pipe(new DownloadProgress())
-                  .pipe(new ProgressBar(":percent [:bar] :time", {}, 40));
+                return this.download(filename, url).pipe(
+                  new ProgressStream(
+                    ":percent [:bar] (:loadedBytes/:totalBytes) :speedBytes :time",
+                    {},
+                    80
+                  )
+                );
               },
             })
           ),
