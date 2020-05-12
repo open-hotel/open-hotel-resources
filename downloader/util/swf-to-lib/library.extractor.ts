@@ -22,7 +22,7 @@ const writeFile = Util.promisify(FS.writeFile);
 
 interface LibraryOptions {
   name: string;
-  swfUrl: string;
+  swfFile: string;
   tmpDir: string;
   output: string;
   items: ItemType[];
@@ -289,7 +289,7 @@ export class LibraryTask {
     return {
       title: "Extract",
       task: () => {
-        return this.extract(this.options.swfUrl).pipe(
+        return this.extract(this.options.swfFile).pipe(
           new ProgressStream(":type (:percent) [:bar] :time")
         );
       },
