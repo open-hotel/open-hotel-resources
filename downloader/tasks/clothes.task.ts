@@ -3,7 +3,6 @@ import { readFileSync } from "fs";
 import { CONFIG } from "../config";
 import { Downloader } from "../util/downloader";
 import { LibraryTask } from "../util/swf-to-lib/library.extractor";
-import { Item } from "../util/swf-to-lib/jpexs";
 import { Task } from "../util/tasklist/task.interface";
 import { Tasklist } from "../util/tasklist/Tasklist";
 import { ItemType } from "../util/extractor/types";
@@ -57,7 +56,7 @@ export const ClothesTask = (): Task => ({
                     output: resolve(cwd, CONFIG.output_dir, "clothes", name),
                     items: [ItemType.BINARY, ItemType.IMAGE],
                     tmpDir: resolve(cwd, CONFIG.tmp_dir, "clothes", name),
-                    swfUrl: resolve(
+                    swfFile: resolve(
                       cwd,
                       CONFIG.tmp_dir,
                       "clothes",

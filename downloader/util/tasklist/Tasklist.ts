@@ -1,6 +1,11 @@
 import draft from "draftlog";
 import { Task } from "./task.interface";
 import { CONFIG } from "../../config";
+import { clearInterval, setInterval } from "timers";
+import { ReadStream } from "fs";
+import { Readable } from "stream";
+
+let asyncId = 0;
 
 draft.into(console);
 
@@ -14,12 +19,57 @@ export class Tasklist {
   private tasksMirror: Array<Task> = [];
   private runningTasks = 0;
   private depth = 0;
+  private LOADER_FRAMES = [
+    "\x1b[1;33m⠋\x1b[0m",
+    "\x1b[1;33m⠙\x1b[0m",
+    "\x1b[1;33m⠹\x1b[0m",
+    "\x1b[1;33m⠸\x1b[0m",
+    "\x1b[1;33m⠼\x1b[0m",
+    "\x1b[1;33m⠴\x1b[0m",
+    "\x1b[1;33m⠦\x1b[0m",
+    "\x1b[1;33m⠧\x1b[0m",
+    "\x1b[1;33m⠇\x1b[0m",
+    "\x1b[1;33m⠏\x1b[0m",
+  ];
+  private SPINNER_INTERVAL = 80;
 
-  private update(data: string, task: Task) {
+  private update(spinner: string, data: string, task: Task) {
     return (
       "  ".repeat(this.depth) +
-      `\x1b[1m> ${task.title}\x1b[0m \x1b[2m${data}\x1b[0m`
+      `${spinner} \x1b[1m${task.title}\x1b[0m \x1b[2m${data}\x1b[0m`
     );
+  }
+
+  private createSprinner(task: Task, time = this.SPINNER_INTERVAL) {
+    let i = 0;
+    let lastData = "";
+    const interval = setInterval(() => {
+      i++;
+      if (i >= this.LOADER_FRAMES.length) i = 0;
+      update(this.update(`${this.LOADER_FRAMES[i]}`, lastData, task));
+    }, time);
+
+    const id = asyncId++;
+
+    // @ts-ignore
+    const update = console.draft(this.update(this.LOADER_FRAMES[i], "", task));
+
+    const stop = () => clearInterval(interval);
+    return {
+      stop,
+      update: (data: string) => {
+        lastData = data;
+        update(this.update(this.LOADER_FRAMES[i], data, task));
+      },
+      success: (data?: string) => {
+        stop();
+        update(this.done(task));
+      },
+      error: (error?: Error) => {
+        stop();
+        update(this.error(error, task));
+      },
+    };
   }
 
   private error(error: Error, task: Task) {
@@ -54,7 +104,7 @@ export class Tasklist {
 
   private async runTask(item: Task, ctx: any) {
     // @ts-ignore
-    const update = console.draft(this.update("", item));
+    const spinner = this.createSprinner(item);
     let result: any = item.task(ctx, item, this.tasks);
 
     if (result instanceof Tasklist) {
@@ -64,23 +114,26 @@ export class Tasklist {
 
     if (result instanceof Promise) {
       return result
-        .then((r) => update(this.done(item)))
-        .catch((err) => update(this.error(err, item)));
+        .then((r) => spinner.success())
+        .catch((err) => spinner.error(err));
     }
 
     return new Promise((resolve, reject) => {
-      (result as NodeJS.ReadStream)
-        .once("finish", () => {
-          update(this.done(item));
-          resolve();
-        })
-        .on("data", (c) => {
-          update(this.update(c.toString(), item));
-        })
-        .once("error", (err) => {
-          update(this.error(err, item));
-          reject(err);
-        });
+      if (result instanceof Readable) {
+        result
+          .once("finish", () => {
+            spinner.success();
+            resolve();
+          })
+          .on("data", (c) => spinner.update(c.toString()))
+          .once("error", (err) => {
+            spinner.error(err);
+            reject(err);
+          });
+      } else {
+        spinner.success();
+        resolve();
+      }
     });
   }
 

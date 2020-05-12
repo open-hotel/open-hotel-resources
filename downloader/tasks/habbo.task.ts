@@ -12,6 +12,7 @@ import {
 import { ProgressStream } from "../util/progress";
 import Cheerio from "cheerio";
 import FS from "fs";
+import { LibraryTask } from "../util/swf-to-lib/library.extractor";
 
 function ExtractTask(): Task {
   return {
@@ -315,18 +316,45 @@ function AvatarAnimationsTask(): Task {
   };
 }
 
+export function ExtractTileCursorTask(): Task {
+  return {
+    title: "Extract TileCursor",
+    task: (ctx) => {
+      const output_dir = path.join(CONFIG.output_dir, "TileCursor")
+      // If output dir exists...
+      if (FS.existsSync(path.join(output_dir, "binary"))) return;
+
+      return new LibraryTask({
+        items: [ItemType.BINARY, ItemType.IMAGE],
+        name: "TileCursor",
+        output: output_dir,
+        tmpDir: path.join(CONFIG.tmp_dir, "TileCursor"),
+        swfFile: path.join(CONFIG.tmp_dir, "TileCursor", 'TileCursor.swf')
+      }).createBuildTask(ctx);
+    },
+  };
+}
+
 export const HabboTask = (): Task => {
   return {
     title: "Habbo",
     task: (ctx) => {
       ctx.habboPath = path.join(CONFIG.tmp_dir, "Habbo", "Habbo.swf");
+      ctx.tileCursorPath = path.join(
+        CONFIG.tmp_dir,
+        "TileCursor",
+        "TileCursor.swf"
+      );
 
       return new Tasklist([
         Downloader.createDownloadTask((ctx) => ({
           [ctx.habboPath]:
             ctx.external_variables.get("flash.client.url") + "Habbo.swf",
+          [ctx.tileCursorPath]:
+            ctx.external_variables.get("flash.client.url") + "TileCursor.swf",
         })),
         ExtractTask(),
+        ExtractTileCursorTask(),
         PartSetTask(),
         AvatarGeometryTask(),
         AvatarAnimationsTask(),
