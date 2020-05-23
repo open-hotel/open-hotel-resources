@@ -31,16 +31,20 @@ function readString(
   return str;
 }
 
-function extractSymbols(buffer: Buffer) {
+function extractSymbols(buffer: Buffer): Record<string, string[]> {
   // const numOfSymbols = buffer.readUInt16LE(0);
   const symbols = {};
   buffer = buffer.slice(2);
   while (buffer.length >= 2) {
     const symbol_id = buffer.readUInt16LE(0);
     const symbol_value = readString(buffer, 2);
-    symbols[symbol_id] = symbol_value;
+    
+    symbols[symbol_id] = symbols[symbol_id] ?? [];
+    symbols[symbol_id].push(symbol_value);
+
     buffer = buffer.slice(2 + symbol_value.length + 1);
   }
+
   return symbols;
 }
 
@@ -109,7 +113,7 @@ export function extractSWF(config: Partial<ExtractOptions>) {
   const resourceItems: ResourceItem[] = [];
   let totalResources = 0;
 
-  let symbols = {};
+  let symbols: Record<string, string[]> = {};
 
   const options: Partial<ExtractOptions> = {
     outputDir: "out",
@@ -166,21 +170,25 @@ export function extractSWF(config: Partial<ExtractOptions>) {
             buffer.slice(cursor, cursor + tag_length)
           );
           if (tag.image) {
+            const symbol = symbols[tag.symbol_id] ?? [`symbol_${tag.symbol_id}`];
+
             return {
               type: ItemType.IMAGE,
               symbol_id: tag.symbol_id,
-              name: symbols[tag.symbol_id] ?? `symbol_${tag.symbol_id}`,
+              name: symbol.shift(),
               data: tag.image,
             };
           }
         },
         async [ItemType.BINARY]() {
           const tag = extractBinary(buffer.slice(cursor, cursor + tag_length));
+          const symbol = symbols[tag.symbol_id] ?? [`symbol_${tag.symbol_id}`];
+
           if (tag.data) {
             return {
               type: ItemType.BINARY,
               symbol_id: tag.symbol_id,
-              name: symbols[tag.symbol_id] ?? `symbol_${tag.symbol_id}`,
+              name: symbol.shift(),
               data: tag.data,
             };
           }

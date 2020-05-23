@@ -7,7 +7,7 @@
   "license": "MIT",
   "scripts": {
     "download": "ts-node downloader",
-    "dev": "hs --cors -p 8888 dist"
+    "dev": "hs --cors -p 8888 out"
   },
   "dependencies": {
     "cheerio": "^1.0.0-rc.3",

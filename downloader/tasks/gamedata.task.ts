@@ -6,32 +6,36 @@ import { CONFIG } from "../config";
 import { Variables } from "../util/variables";
 import { Task } from "../util/tasklist/task.interface";
 import { Tasklist } from "../util/tasklist/Tasklist";
+import { tryParse } from "../util";
 
 export const GameDataTask = (): Task => {
   const dir = process.cwd();
   const externalVariablesPath = resolve(
     dir,
     CONFIG.tmp_dir,
+    CONFIG.output.gamedata,
     "external_variables.txt"
   );
-  const figuremapPath = resolve(dir, CONFIG.tmp_dir, "figuremap.xml");
-  const figuredataPath = resolve(dir, CONFIG.tmp_dir, "figuredata.xml");
-  const effectmapPath = resolve(dir, CONFIG.tmp_dir, "effectmap.xml");
-  const figuremapJSONPath = resolve(dir, CONFIG.output_dir, "figuremap.json");
+  const figuremapPath = resolve(dir, CONFIG.tmp_dir, CONFIG.output.gamedata, "figuremap.xml");
+  const figuredataPath = resolve(dir, CONFIG.tmp_dir, CONFIG.output.gamedata, "figuredata.xml");
+  const effectmapPath = resolve(dir, CONFIG.tmp_dir, CONFIG.output.gamedata, "effectmap.xml");
+  const figuremapJSONPath = resolve(dir, CONFIG.output_dir, CONFIG.output.gamedata, "figuremap.json");
   const avatarActionsPath = resolve(
     dir,
     CONFIG.tmp_dir,
+    CONFIG.output.gamedata,
     "HabboAvatarActions.xml"
   );
   const avatarActionsJSONPath = resolve(
     dir,
     CONFIG.output_dir,
+    CONFIG.output.gamedata,
     "HabboAvatarActions.json"
   );
-  const furnidataPath = resolve(dir, CONFIG.tmp_dir, "furnidata.xml");
-  const figuredataJSONPath = resolve(dir, CONFIG.output_dir, "figuredata.json");
-  const effectmapJSONPath = resolve(dir, CONFIG.output_dir, "effectmap.json");
-  const furnidataJSONPath = resolve(dir, CONFIG.output_dir, "furnidata.json");
+  const furnidataPath = resolve(dir, CONFIG.tmp_dir, CONFIG.output.gamedata, "furnidata.xml");
+  const figuredataJSONPath = resolve(dir, CONFIG.output_dir, CONFIG.output.gamedata, "figuredata.json");
+  const effectmapJSONPath = resolve(dir, CONFIG.output_dir, CONFIG.output.gamedata, "effectmap.json");
+  const furnidataJSONPath = resolve(dir, CONFIG.output_dir, CONFIG.output.gamedata, "furnidata.json");
 
   return {
     title: "Gamedata",
@@ -128,7 +132,7 @@ export const GameDataTask = (): Task => {
                   color.removeAttr("id");
                   color.attr("color", color.text());
 
-                  acc[id] = color.attr();
+                  acc[id] = tryParse(color.attr());
 
                   return acc;
                 }, {});
@@ -147,11 +151,19 @@ export const GameDataTask = (): Task => {
                   const set = Cheerio(el);
                   const id = set.attr("id");
                   const parts = set.children("part").toArray();
+                  const hiddenLayers = set
+                    .find("hiddenlayers layer")
+                    .toArray()
+                    .map((el) => Cheerio(el).attr("parttype"));
 
                   set.removeAttr("id");
 
                   acc[id] = set.attr();
-                  acc[id].parts = parts.map((el) => Cheerio(el).attr());
+                  acc[id].parts = parts.map((el) => tryParse(Cheerio(el).attr()));
+
+                  if (hiddenLayers.length) {
+                    acc[id].hiddenLayers = hiddenLayers;
+                  }
 
                   return acc;
                 }, {});
