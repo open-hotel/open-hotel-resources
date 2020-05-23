@@ -8,7 +8,7 @@ import { HabboTask } from "./tasks/habbo.task";
 new Tasklist([
   GameDataTask(),
   HabboTask(),
-  // ClothesTask(),
+  ClothesTask(),
   // EffectsTask(),
   // FurniTask(),
 ]).run();

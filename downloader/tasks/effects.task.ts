@@ -31,7 +31,7 @@ export const EffectsTask = (): Task => ({
             const outFilename = resolve(
               process.cwd(),
               CONFIG.tmp_dir,
-              "effects",
+              CONFIG.output.effects,
               name,
               filename
             );
@@ -57,13 +57,13 @@ export const EffectsTask = (): Task => ({
                 task: (ctx) => {
                   return new LibraryTask({
                     name: name,
-                    output: resolve(cwd, CONFIG.output_dir, "effects", name),
+                    output: resolve(cwd, CONFIG.output_dir, CONFIG.output.effects, name),
                     items: [ItemType.BINARY, ItemType.IMAGE],
-                    tmpDir: resolve(cwd, CONFIG.tmp_dir, "effects", name),
+                    tmpDir: resolve(cwd, CONFIG.tmp_dir, CONFIG.output.effects, name),
                     swfFile: resolve(
                       cwd,
                       CONFIG.tmp_dir,
-                      "effects",
+                      CONFIG.output.effects,
                       name,
                       `${name}.swf`
                     ),

@@ -13,6 +13,7 @@ import { ProgressStream } from "../util/progress";
 import Cheerio from "cheerio";
 import FS from "fs";
 import { LibraryTask } from "../util/swf-to-lib/library.extractor";
+import { tryParse } from "../util";
 
 function ExtractTask(): Task {
   return {
@@ -132,7 +133,7 @@ function AvatarGeometryTask(): Task {
           .children()
           .toArray()
           .reduce((acc, el) => {
-            acc[el.name] = Cheerio(el).text();
+            acc[el.name] = tryParse(Cheerio(el).text());
             return acc;
           }, acc);
         return acc;
@@ -148,7 +149,7 @@ function AvatarGeometryTask(): Task {
           const geometry = Cheerio(el);
           const id = geometry.attr("id");
           geometry.removeAttr("id");
-          acc[id] = geometry.attr();
+          acc[id] = tryParse(geometry.attr());
           return acc;
         }, {});
 
@@ -166,7 +167,7 @@ function AvatarGeometryTask(): Task {
             innerAvatarset.removeAttr("id");
 
             acc[id] = {
-              ...innerAvatarset.attr(),
+              ...tryParse(innerAvatarset.attr()),
 
               bodyparts: innerAvatarset
                 .children()
@@ -189,7 +190,7 @@ function AvatarGeometryTask(): Task {
             const id = bodypart.attr("id");
             bodypart.removeAttr("id");
             acc[id] = {
-              ...bodypart.attr(),
+              ...tryParse(bodypart.attr()),
               items: bodypart
                 .children()
                 .toArray()
@@ -197,7 +198,7 @@ function AvatarGeometryTask(): Task {
                   const item = Cheerio(el);
                   const id = item.attr("id");
                   item.removeAttr("id");
-                  acc[id] = item.attr();
+                  acc[id] = tryParse(item.attr());
                   return acc;
                 }, {}),
             };
@@ -339,7 +340,7 @@ export const HabboTask = (): Task => {
   return {
     title: "Habbo",
     task: (ctx) => {
-      ctx.habboPath = path.join(CONFIG.tmp_dir, "Habbo", "Habbo.swf");
+      ctx.habboPath = path.join(CONFIG.tmp_dir, CONFIG.output.habbo, "Habbo.swf");
       ctx.tileCursorPath = path.join(
         CONFIG.tmp_dir,
         "TileCursor",

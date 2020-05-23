@@ -6,6 +6,9 @@ import { LibraryTask } from "../util/swf-to-lib/library.extractor";
 import { Task } from "../util/tasklist/task.interface";
 import { Tasklist } from "../util/tasklist/Tasklist";
 import { ItemType } from "../util/extractor/types";
+import { ignore } from "../util/ignore";
+
+const filter = ignore.createFilter()
 
 export const ClothesTask = (): Task => ({
   title: "Clothes",
@@ -22,11 +25,12 @@ export const ClothesTask = (): Task => ({
       Downloader.createDownloadTask(
         (ctx) => {
           return figuremap.libs.reduce((acc: Object, lib: any) => {
+            if (!filter(lib.id)) return acc;
             const filename = `${lib.id}.swf`;
             const outFilename = resolve(
               process.cwd(),
               CONFIG.tmp_dir,
-              "clothes",
+              CONFIG.output.clothes,
               lib.id,
               filename
             );
@@ -46,22 +50,21 @@ export const ClothesTask = (): Task => ({
           const cwd = process.cwd();
 
           return new Tasklist(
-            figuremap.libs.map((lib, index, arr) => {
-              const name = lib.id;
+            figuremap.libs.map(l => l.id).filter(filter).map((lib, index, arr) => {
               return {
-                title: `(${index + 1}/${arr.length}) Build ${name}`,
+                title: `(${index + 1}/${arr.length}) Build ${lib}`,
                 task: (ctx) => {
                   return new LibraryTask({
-                    name: name,
-                    output: resolve(cwd, CONFIG.output_dir, "clothes", name),
+                    name: lib,
+                    output: resolve(cwd, CONFIG.output_dir, CONFIG.output.clothes, lib),
                     items: [ItemType.BINARY, ItemType.IMAGE],
-                    tmpDir: resolve(cwd, CONFIG.tmp_dir, "clothes", name),
+                    tmpDir: resolve(cwd, CONFIG.tmp_dir, CONFIG.output.clothes, lib),
                     swfFile: resolve(
                       cwd,
                       CONFIG.tmp_dir,
-                      "clothes",
-                      name,
-                      `${name}.swf`
+                      CONFIG.output.clothes,
+                      lib,
+                      `${lib}.swf`
                     ),
                   }).createBuildTask(ctx);
                 },

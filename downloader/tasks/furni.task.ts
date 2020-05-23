@@ -38,7 +38,7 @@ export const FurniTask = (): Task => ({
             const outFilename = resolve(
               cwd,
               CONFIG.tmp_dir,
-              "furnitures",
+              CONFIG.output.furnitures,
               item.name,
               filename
             );
@@ -71,20 +71,20 @@ export const FurniTask = (): Task => ({
                     output: resolve(
                       cwd,
                       CONFIG.output_dir,
-                      "furnitures",
+                      CONFIG.output.furnitures,
                       item.name
                     ),
                     items: [ItemType.BINARY, ItemType.IMAGE],
                     tmpDir: resolve(
                       cwd,
                       CONFIG.tmp_dir,
-                      "furnitures",
+                      CONFIG.output.furnitures,
                       item.name
                     ),
                     swfFile: resolve(
                       cwd,
                       CONFIG.tmp_dir,
-                      "furnitures",
+                      CONFIG.output.furnitures,
                       item.name,
                       `${item.name}.swf`
                     ),
