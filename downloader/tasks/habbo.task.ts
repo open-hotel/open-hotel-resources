@@ -27,7 +27,7 @@ function ExtractTask(): Task {
       // Extract files
       return extractSWF({
         inputFile: ctx.habboPath,
-        itemTypes: [ItemType.BINARY],
+        itemTypes: [ItemType.BINARY, ItemType.IMAGE],
         outputDir,
         fileName: (item: ResourceItem, ext: string) => {
           if (item.type == ItemType.BINARY) {
