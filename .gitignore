@@ -1,0 +1,6 @@
+resources/
+node_modules/
+raw/
+tmp/
+out/
+*.swf

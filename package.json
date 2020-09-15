@@ -1,0 +1,36 @@
+{
+  "name": "open-hotel-resources",
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": "https://github.com/open-hotel/open-hotel-resources.git",
+  "author": "Salomão Neto <salomaosnff@yahoo.com>",
+  "license": "MIT",
+  "scripts": {
+    "download": "ts-node downloader",
+    "dev": "hs --cors -p 8888 out"
+  },
+  "dependencies": {
+    "cheerio": "^1.0.0-rc.3",
+    "draftlog": "^1.0.12",
+    "follow-redirects": "^1.11.0",
+    "ignore": "^5.1.4",
+    "lodash": "^4.17.15",
+    "moment": "^2.25.1",
+    "numeral": "^2.0.6",
+    "rimraf": "^3.0.0",
+    "sharp": "^0.25.2"
+  },
+  "devDependencies": {
+    "@types/cheerio": "^0.22.18",
+    "@types/lodash": "^4.14.149",
+    "@types/node": "^13.13.4",
+    "@types/progress": "^2.0.3",
+    "@types/sharp": "^0.25.0",
+    "@types/follow-redirects": "^1.8.0",
+    "@types/listr": "^0.14.2",
+    "@types/numeral": "^0.0.27",
+    "http-server": "^0.12.1",
+    "ts-node": "^8.9.1",
+    "typescript": "^3.8.3"
+  }
+}

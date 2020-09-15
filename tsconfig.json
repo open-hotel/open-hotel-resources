@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "removeComments": true,
+    "target": "es2015",
+    "sourceMap": true,
+    "outDir": "./js",
+    "lib": ["ES2020"],
+    "incremental": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true
+  },
+  "include": ["downloader"],
+  "exclude": ["node_modules", "dist"]
+}
