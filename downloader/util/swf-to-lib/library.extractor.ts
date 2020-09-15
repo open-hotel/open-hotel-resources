@@ -13,6 +13,7 @@ import { Tasklist } from "../tasklist/Tasklist";
 import { Task } from "../tasklist/task.interface";
 import { extractSWF } from "../extractor";
 import { ItemType } from "../extractor/types";
+import { result } from "lodash";
 
 const mkdir = Util.promisify(FS.mkdir);
 const readFile = Util.promisify(FS.readFile);
@@ -277,9 +278,14 @@ export class LibraryTask {
     return {
       title: "Create temporary directory",
       task: async (ctx) => {
+        if (!FS.existsSync(this.options.swfFile)) {
+          ctx.skip = true;
+          return;
+        }
+        
         ctx.bindataDir = Path.join(this.options.tmpDir, "binary");
         ctx.imagesDir = Path.join(this.options.tmpDir, "images");
-
+        
         await mkdir(this.options.tmpDir, { recursive: true });
       },
     };
@@ -288,7 +294,7 @@ export class LibraryTask {
   private TASK_extract(ctx: any): Task {
     return {
       title: "Extract",
-      task: () => {
+      task: (ctx) => {
         return this.extract(this.options.swfFile).pipe(
           new ProgressStream(":type (:percent) [:bar] :time")
         );
@@ -297,9 +303,11 @@ export class LibraryTask {
   }
 
   private TASK_manifest(ctx): Task {
+    if (ctx.skip) return;
     return {
       title: "Read manifest.xml as JSON",
       task: async (ctx) => {
+        if (!FS.existsSync(ctx.bindataDir)) return;
         ctx.binaryDataFiles = await readdir(ctx.bindataDir);
         const manifestFile = ctx.binaryDataFiles.find((item) =>
           item.endsWith("_manifest.bin")
@@ -312,10 +320,12 @@ export class LibraryTask {
   }
 
   private TASK_spritesheet(ctx: any): Task {
+    if (ctx.skip) return;
+
     return {
       title: "Generate Spritesheet",
       task: async (ctx) => {
-        if (ctx.noSpritesheet) return;
+        if (!FS.existsSync(ctx.imagesDir)) return;
         if (
           !FS.existsSync(
             Path.join(this.options.output, `${this.options.name}.png`)
@@ -324,8 +334,6 @@ export class LibraryTask {
           if (FS.readdirSync(ctx.imagesDir).length) {
             ctx.override_library = true;
             ctx.spritesheet = await this.createSpritesheet(ctx.imagesDir);
-          } else {
-            ctx.noSpritesheet = true;
           }
         }
       },
@@ -333,9 +341,12 @@ export class LibraryTask {
   }
 
   private TASK_animations(ctx: any): Task {
+    if (ctx.skip) return;
+
     return {
       title: "Convert animations to JSON",
       task: async (ctx) => {
+        if (!FS.existsSync(ctx.bindataDir)) return;
         const animationFiles = ctx.binaryDataFiles.filter(
           this.options.fileAnimationFilter
         );
@@ -350,6 +361,8 @@ export class LibraryTask {
   }
 
   private TASK_save(ctx: any): Task {
+    if (ctx.skip) return;
+
     return {
       title: `Save ${this.options.name}.json`,
       task: async (ctx) => {

@@ -9,6 +9,6 @@ new Tasklist([
   GameDataTask(),
   HabboTask(),
   ClothesTask(),
-  // EffectsTask(),
-  // FurniTask(),
+  EffectsTask(),
+  FurniTask(),
 ]).run();

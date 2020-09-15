@@ -38,7 +38,7 @@ function extractSymbols(buffer: Buffer): Record<string, string[]> {
   while (buffer.length >= 2) {
     const symbol_id = buffer.readUInt16LE(0);
     const symbol_value = readString(buffer, 2);
-    
+
     symbols[symbol_id] = symbols[symbol_id] ?? [];
     symbols[symbol_id].push(symbol_value);
 
@@ -123,6 +123,7 @@ export function extractSWF(config: Partial<ExtractOptions>) {
       return `${item.name}.${ext}`;
     },
   };
+
   Object.assign(options, config);
 
   let buffer = fs.readFileSync(options.inputFile);
@@ -140,10 +141,14 @@ export function extractSWF(config: Partial<ExtractOptions>) {
   const header_length = 8 + 1 + Math.ceil(((buffer[8] >> 3) * 4 - 3) / 8) + 4;
 
   // Search for symble names
-  for (let cursor = header_length; cursor < file_length; ) {
+  for (let cursor = header_length; cursor < file_length;) {
     const { tag_code, tag_length, offset } = getTagHeader(buffer, cursor);
     cursor += offset;
 
+
+    if (options.inputFile.endsWith('floortile.swf')) {
+      console.log('AAAAAAAAAAAAAAAAAAAAAAA', tag_code)
+    }
     if (tag_code == ItemType.SYMBOL) {
       symbols = extractSymbols(buffer.slice(cursor, cursor + tag_length));
       break;
@@ -160,9 +165,10 @@ export function extractSWF(config: Partial<ExtractOptions>) {
   const progress = new ExtractProgress(totalResources);
 
   (async () => {
-    for (let cursor = header_length; cursor < file_length; ) {
+    for (let cursor = header_length; cursor < file_length;) {
       const { tag_code, tag_length, offset } = getTagHeader(buffer, cursor);
       cursor += offset;
+
 
       const types = {
         async [ItemType.IMAGE]() {
