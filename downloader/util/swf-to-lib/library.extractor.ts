@@ -108,7 +108,8 @@ export class LibraryTask {
     // Frames
     const getFrames = (frames: Cheerio) => {
       if (!frames.length) return undefined;
-      frames.toArray().map((el) => {
+
+      return frames.toArray().map((el) => {
         const frame = Cheerio(el);
         const bodyparts = frame.children("bodypart,fx").toArray();
 
@@ -149,7 +150,7 @@ export class LibraryTask {
       const desc = animation.attr("desc");
 
       // Frames
-      const frames = getFrames(animation.children("frame"));
+      const frames = getFrames(animation.children('frame'));
 
       // Overrides
       const overrides = animation
@@ -355,6 +356,7 @@ export class LibraryTask {
             this.animationsToJSON(Path.join(ctx.bindataDir, file))
           )
         );
+
         ctx.animations = Object.assign({}, ...animations);
       },
     };
