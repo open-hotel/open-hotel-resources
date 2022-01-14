@@ -12,7 +12,7 @@
   "dependencies": {
     "cheerio": "^1.0.0-rc.3",
     "draftlog": "^1.0.12",
-    "follow-redirects": "^1.11.0",
+    "follow-redirects": "^1.14.7",
     "ignore": "^5.1.4",
     "lodash": "^4.17.15",
     "moment": "^2.25.1",
