@@ -18,7 +18,7 @@
     "moment": "^2.25.1",
     "numeral": "^2.0.6",
     "rimraf": "^3.0.0",
-    "sharp": "^0.25.2"
+    "sharp": "^0.30.5"
   },
   "devDependencies": {
     "@types/cheerio": "^0.22.18",
